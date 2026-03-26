@@ -20,7 +20,9 @@ variable "instance_count" {
 
 variable "apps_config" {
   type = map(object({
-    stack   = string
-    version = string
+    type         = string
+    version      = string
+    docker_image = optional(string)
   }))
+
 }

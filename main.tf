@@ -23,8 +23,19 @@ resource "azurerm_linux_web_app" "apps" {
 
   site_config {
     always_on = false
-    application_stack {
-      node_version = each.value.version
+    dynamic "application_stack" {
+      for_each = each.value.type == "node" ? [1] : []
+      content {
+        node_version = each.value.version
+      }
+    }
+
+    dynamic "application_stack" {
+      for_each = each.value.type == "docker" ? [1] : []
+      content {
+        docker_image_name   = "${each.value.docker_image}:${each.value.version}"
+        docker_registry_url = "https://index.docker.io"
+      }
     }
   }
 

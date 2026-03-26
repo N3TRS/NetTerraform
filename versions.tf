@@ -5,13 +5,13 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
+      version = "~> 4.0"
     }
   }
 
   backend "azurerm" {
     resource_group_name  = "rg-terraform-mgmt"
-    storage_account_name = ""
+    storage_account_name = "spterraformomnicode"
     container_name       = "tfstate"
     key                  = "omnicode.prod.tfstate"
   }
