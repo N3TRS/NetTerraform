@@ -22,7 +22,7 @@ resource "azurerm_linux_web_app" "apps" {
   service_plan_id     = azurerm_service_plan.this.id
 
   site_config {
-    always_on = false
+    always_on = true
     dynamic "application_stack" {
       for_each = each.value.type == "node" ? [1] : []
       content {
@@ -31,16 +31,19 @@ resource "azurerm_linux_web_app" "apps" {
     }
 
     dynamic "application_stack" {
-      for_each = each.value.type == "docker" ? [1] : []
+      for_each = each.value.type == "python" ? [1] : []
       content {
-        docker_image_name   = "${each.value.docker_image}:${each.value.version}"
-        docker_registry_url = "https://index.docker.io"
+        python_version = each.value.python_version
       }
     }
   }
 
   app_settings = {
     "NODE_ENV" = "production"
+  }
+
+  lifecycle {
+    ignore_changes = [app_settings, site_config[0].app_command_line]
   }
 
 }
