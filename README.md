@@ -1,266 +1,323 @@
-# NetTerraform
+# 🏗️ NetTerraform — Infraestructura Azure como Código para OmniCode
 
-A Terraform module for provisioning and managing Azure infrastructure with version control. NetTerraform enables Infrastructure-as-Code (IaC) practices for the OmniCode project, automating the deployment of Azure App Services with support for both Node.js and Docker containerized applications.
+<div align="center">
 
-## Getting Started
+### 🛠️ Stack Tecnológico
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+![Terraform](https://img.shields.io/badge/Terraform-≥_1.0-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)
+![Azure](https://img.shields.io/badge/Azure_Provider-~>_4.0-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
+![HCL](https://img.shields.io/badge/HCL-Declarative-7B42BC?style=for-the-badge)
 
-### Prerequisites
+### ☁️ Recursos Provisionados
 
-Before you begin, ensure you have the following tools installed:
+![Resource Group](https://img.shields.io/badge/Resource_Group-Azure-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
+![App Service Plan](https://img.shields.io/badge/App_Service_Plan-Linux-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
+![Web Apps](https://img.shields.io/badge/Linux_Web_Apps-Node.js_+_Docker-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
 
-**Terraform** (version >= 1.0)
-```bash
-# On macOS with Homebrew
-brew install terraform
+### 🏛️ Arquitectura
 
-# On Linux (Ubuntu/Debian)
-wget https://apt.releases.hashicorp.com/gpg
-apt-key add gpg
-apt-get update && apt-get install terraform
+![IaC](https://img.shields.io/badge/Pattern-Infrastructure_as_Code-blueviolet?style=for-the-badge)
+![Remote State](https://img.shields.io/badge/State-Azure_Storage-0078D4?style=for-the-badge)
+![Modular](https://img.shields.io/badge/Design-Variable--Driven-009688?style=for-the-badge)
 
-# Or download directly from https://www.terraform.io/downloads.html
+</div>
+
+---
+
+## 📑 Tabla de Contenidos
+
+1. [👤 Integrantes](#1--integrantes)
+2. [🎯 Objetivo del Proyecto](#2--objetivo-del-proyecto)
+3. [⚡ Recursos Provisionados](#3--recursos-provisionados)
+4. [📋 Estrategia de Versionamiento](#4--estrategia-de-versionamiento)
+5. [⚙️ Variables y Configuración](#5-️-variables-y-configuración)
+6. [📤 Outputs](#6--outputs)
+7. [🏛️ Arquitectura de la Infraestructura](#7-️-arquitectura-de-la-infraestructura)
+8. [🗂️ Organización del Código](#8-️-organización-del-código)
+9. [🔗 Estado Remoto (Azure Storage)](#9--estado-remoto-azure-storage)
+10. [🚀 Uso del Módulo](#10--uso-del-módulo)
+11. [🤝 Integrantes y Contribuciones](#11--integrantes-y-contribuciones)
+
+---
+
+## 1. 👤 Integrantes
+
+- Tulio Riaño Sánchez
+- Julian Camilo Lopez Barrero
+- Juan Sebastián Puentes Julio
+- David Alejandro Patacon Henao
+
+---
+
+## 2. 🎯 Objetivo del Proyecto
+
+**NetTerraform** automatiza el aprovisionamiento de toda la infraestructura Azure de **OmniCode** mediante código HCL versionado en git. Crea Resource Groups, App Service Plans y Linux Web Apps con soporte para runtimes Node.js o contenedores Docker, con estado remoto centralizado en Azure Storage para colaboración en equipo y pipelines CI/CD.
+
+---
+
+## 3. ⚡ Recursos Provisionados
+
+| Recurso Azure | Nombre | Descripción |
+|---|---|---|
+| `azurerm_resource_group` | `rg-{project_name}-prod` | Contenedor lógico de todos los recursos |
+| `azurerm_service_plan` | `asp-{project_name}` | Plan de hosting Linux con SKU y instancias configurables |
+| `azurerm_linux_web_app` | `{project_name}-{app_name}` | Web App por cada entrada en `apps_config` |
+
+### Runtimes Soportados
+
+| Tipo | Configuración | Ejemplo |
+|---|---|---|
+| **Node.js** | `type = "node"`, `version = "20.x"` | `{ type = "node", version = "20.x" }` |
+| **Docker** | `type = "docker"`, `version = "v1.0"`, `docker_image = "registry/image"` | `{ type = "docker", version = "latest", docker_image = "acr.io/app" }` |
+
+---
+
+## 4. 📋 Estrategia de Versionamiento
+
+### Convenciones para commits
+
+```
+feat: agregar web app para omnicode-api-sessions
+fix: corregir SKU en app service plan para producción
+chore: actualizar azurerm provider a 4.x
+docs: agregar ejemplo de configuración Docker en README
 ```
 
-**Azure CLI** (latest version)
-```bash
-# On macOS with Homebrew
-brew install azure-cli
+### Archivos NO versionados (`.gitignore`)
 
-# On Linux (Ubuntu/Debian)
-curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-
-# Or follow instructions at https://docs.microsoft.com/en-us/cli/azure/install-azure-cli
+```
+.terraform/          # Plugins del proveedor (binarios)
+*.tfstate            # Estado local Terraform
+*.tfstate.backup     # Backup de estado
+terraform.tfvars     # Variables con valores reales (secretos)
+.terraform.lock.hcl  # Sí se versiona — pin de versiones de providers
 ```
 
-**Azure Subscription** with appropriate permissions to create resources in Azure.
+---
 
-### Installing
+## 5. ⚙️ Variables y Configuración
 
-Follow these steps to set up your development environment:
+| Variable | Tipo | Default | Descripción |
+|---|---|---|---|
+| `project_name` | string | `"omnicode"` | Prefijo para todos los nombres de recursos |
+| `location` | string | `"East US"` | Región Azure de despliegue |
+| `sku_name` | string | `"B1"` | SKU del App Service Plan (B1, B2, P1V2, S1, etc.) |
+| `instance_count` | number | `1` | Número de instancias/workers del plan |
+| `apps_config` | map(object) | — | Mapa de aplicaciones a desplegar |
 
-**1. Clone the repository**
-```bash
-git clone https://github.com/N3TRS/NetTerraform.git
-cd NetTerraform
-```
+### Estructura de `apps_config`
 
-**2. Authenticate with Azure**
-```bash
-az login
-```
-This will open a browser window to authenticate with your Azure account.
-
-**3. Initialize Terraform**
-```bash
-terraform init
-```
-This command initializes the Terraform working directory and downloads the Azure provider plugin.
-
-**4. Create a Terraform variables file**
-```bash
-cat > terraform.tfvars << EOF
-project_name    = "omnicode"
-location         = "East US"
-sku_name         = "B1"
-instance_count   = 1
-
+```hcl
 apps_config = {
-  "api" = {
+  "api-auth" = {
     type    = "node"
-    version = "18.x"
+    version = "20.x"
   }
-  "web" = {
+  "api-sessions" = {
     type         = "docker"
     version      = "latest"
-    docker_image = "myregistry/myapp"
-  }
-}
-EOF
-```
-
-**5. Validate your configuration**
-```bash
-terraform validate
-```
-
-**6. Review the plan before applying**
-```bash
-terraform plan -out=tfplan
-```
-
-**7. Verify successful setup**
-```bash
-# Check that Terraform initialized correctly
-ls -la .terraform/
-```
-
-## Usage
-
-This Terraform module creates the following Azure resources:
-
-- **Resource Group**: A logical container for your Azure resources
-- **App Service Plan**: A managed hosting environment for your web applications
-- **Linux Web Apps**: Individual application instances that can run Node.js or Docker containers
-
-### Basic Example
-
-```hcl
-module "omnicode_infrastructure" {
-  source = "./"
-
-  project_name   = "omnicode"
-  location       = "East US"
-  sku_name       = "B1"
-  instance_count = 2
-
-  apps_config = {
-    "api-server" = {
-      type    = "node"
-      version = "18.x"
-    }
-    "web-app" = {
-      type         = "docker"
-      version      = "v1.0"
-      docker_image = "myregistry/web-app"
-    }
+    docker_image = "acromnicodeprod.azurecr.io/net-sessions"
   }
 }
 ```
 
-## Variables
-
-The module accepts the following variables:
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `project_name` | string | "omnicode" | Name of the project (used in resource naming) |
-| `location` | string | "East US" | Azure region for resource deployment |
-| `sku_name` | string | "B1" | App Service Plan SKU (e.g., B1, B2, P1V2) |
-| `instance_count` | number | 1 | Number of instances in the App Service Plan |
-| `apps_config` | map(object) | - | Configuration for web applications |
-
-### apps_config Structure
+### Ejemplo completo (`terraform.tfvars`)
 
 ```hcl
+project_name   = "omnicode"
+location       = "Canada Central"
+sku_name       = "B1"
+instance_count = 1
+
 apps_config = {
-  "app-name" = {
-    type         = "node" or "docker"  # Application type
-    version      = "18.x" or "v1.0"    # Runtime/image version
-    docker_image = "registry/image"    # Required only for Docker apps
-  }
+  "api-authentication" = { type = "node", version = "20.x" }
+  "api-calls"          = { type = "node", version = "20.x" }
+  "api-real-time"      = { type = "docker", version = "latest", docker_image = "acromnicodeprod.azurecr.io/net-sessions" }
+  "api-python"         = { type = "node", version = "20.x" }
 }
 ```
 
-## Outputs
+---
 
-The module provides the following outputs:
+## 6. 📤 Outputs
 
-| Output | Description |
-|--------|-------------|
-| `app_urls` | HTTPS URLs for deployed applications |
-| `resource_group_name` | Name of the created Azure Resource Group |
-| `service_plan_name` | Name of the App Service Plan |
+| Output | Tipo | Descripción |
+|---|---|---|
+| `app_urls` | `map(string)` | URLs HTTPS de cada app: `https://{name}.azurewebsites.net` |
+| `resource_group_name` | `string` | Nombre del Resource Group creado |
+| `service_plan_name` | `string` | Nombre del App Service Plan |
 
-Access outputs after deployment:
 ```bash
+# Ver URLs de todas las apps
 terraform output app_urls
+
+# Ver nombre del resource group
 terraform output resource_group_name
 ```
 
-## Deployment
+---
 
-### Prerequisites for Deployment
+## 7. 🏛️ Arquitectura de la Infraestructura
 
-Before deploying to a live system, ensure:
+```
+Azure Subscription
+└── Resource Group: rg-omnicode-prod
+    │
+    ├── App Service Plan: asp-omnicode (Linux, B1)
+    │   │
+    │   ├── omnicode-api-authentication  (Node.js 20.x)
+    │   ├── omnicode-api-calls           (Node.js 20.x)
+    │   ├── omnicode-api-real-time       (Docker: acr.io/net-sessions:latest)
+    │   └── omnicode-api-python          (Node.js 20.x)
+    │
+    └── [Azure Container Registry: acromnicodeprod]  (externo a este módulo)
+```
 
-1. **Azure Storage Account** is configured for Terraform state backend
-   - Resource Group: `rg-terraform-mgmt`
-   - Storage Account: `spterraformomnicode`
-   - Container: `tfstate`
+### Convención de nombres
 
-2. **Azure credentials** are configured:
-   ```bash
-   az login
-   ```
+| Recurso | Patrón | Ejemplo |
+|---|---|---|
+| Resource Group | `rg-{project_name}-prod` | `rg-omnicode-prod` |
+| App Service Plan | `asp-{project_name}` | `asp-omnicode` |
+| Web App | `{project_name}-{app_name}` | `omnicode-api-calls` |
 
-### Deploying to Production
+---
 
-**1. Create a production tfvars file**
+## 8. 🗂️ Organización del Código
+
+```
+NetTerraform/
+│
+├── main.tf              # Recursos: azurerm_resource_group, azurerm_service_plan, azurerm_linux_web_app (for_each)
+├── variables.tf         # Definición de todas las variables de entrada
+├── outputs.tf           # Outputs: app_urls, resource_group_name, service_plan_name
+├── versions.tf          # Versiones requeridas de Terraform y Azure Provider + backend config
+│
+├── .terraform.lock.hcl  # Lock de versiones de providers (versionado en git)
+├── .gitignore           # Excluye .terraform/, *.tfstate, terraform.tfvars
+├── LICENSE              # MIT
+└── README.md
+```
+
+---
+
+## 9. 🔗 Estado Remoto (Azure Storage)
+
+El estado Terraform se almacena en Azure Storage para colaboración segura:
+
+```hcl
+# versions.tf
+backend "azurerm" {
+  resource_group_name  = "rg-terraform-mgmt"
+  storage_account_name = "spterraformomnicode"
+  container_name       = "tfstate"
+  key                  = "omnicode.prod.tfstate"
+}
+```
+
+| Propiedad | Valor |
+|---|---|
+| **Resource Group** | `rg-terraform-mgmt` |
+| **Storage Account** | `spterraformomnicode` |
+| **Container** | `tfstate` |
+| **Blob key** | `omnicode.prod.tfstate` |
+
+> **Importante:** Nunca incluir archivos `.tfstate` en git. Contienen valores sensibles de la infraestructura.
+
+---
+
+## 10. 🚀 Uso del Módulo
+
+### 📋 Prerrequisitos
+
+- **Terraform >= 1.0**
+- **Azure CLI** y suscripción con permisos de creación de recursos
+
+### 🛠️ Despliegue
+
 ```bash
-cat > prod.tfvars << EOF
-project_name    = "omnicode"
-location         = "East US"
-sku_name         = "P1V2"
-instance_count   = 3
+# 1. Clonar y entrar al directorio
+git clone <repo-url>
+cd NetTerraform
 
+# 2. Autenticar con Azure
+az login
+
+# 3. Inicializar Terraform (descarga providers, configura backend)
+terraform init
+
+# 4. Crear archivo de variables
+cat > terraform.tfvars << EOF
+project_name   = "omnicode"
+location       = "East US"
+sku_name       = "B1"
+instance_count = 1
 apps_config = {
-  "api" = {
-    type    = "node"
-    version = "18.x"
-  }
-  "web" = {
-    type         = "docker"
-    version      = "v1.0.0"
-    docker_image = "myregistry/web-app"
-  }
+  "api-auth" = { type = "node", version = "20.x" }
 }
 EOF
-```
 
-**2. Plan the deployment**
-```bash
-terraform plan -var-file=prod.tfvars -out=prod.tfplan
-```
+# 5. Validar configuración
+terraform validate
 
-**3. Apply the configuration**
-```bash
-terraform apply prod.tfplan
-```
+# 6. Ver plan antes de aplicar
+terraform plan -out=tfplan
 
-**4. Verify deployment**
-```bash
+# 7. Aplicar la infraestructura
+terraform apply tfplan
+
+# 8. Ver URLs resultantes
 terraform output app_urls
 ```
 
-The URLs will show the HTTPS endpoints for your deployed applications.
+### 🔄 Actualizar Infraestructura
 
-### State Management
+```bash
+# Modificar variables o main.tf, luego:
+terraform plan -out=update.tfplan
+terraform apply update.tfplan
+```
 
-This module uses Azure Storage as a remote backend for Terraform state. The state is stored in:
-- Resource Group: `rg-terraform-mgmt`
-- Storage Account: `spterraformomnicode`
-- Container: `tfstate`
-- Key: `omnicode.prod.tfstate`
+### 🗑️ Destruir Infraestructura
 
-**Important**: Never commit `.tfstate` files to version control. They contain sensitive information.
+```bash
+# ⚠️ Esto elimina TODOS los recursos del plan
+terraform destroy
+```
 
-## Built With
+### Autenticación en CI/CD (Service Principal)
 
-* [Terraform](https://www.terraform.io/) - Infrastructure as Code tool for provisioning cloud resources
-* [Azure Provider](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs) - Official Terraform provider for Microsoft Azure
-* [Microsoft Azure](https://azure.microsoft.com/) - Cloud platform providing computing, storage, and networking services
-* [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/) - Command-line interface for managing Azure resources
+```bash
+# Variables de entorno para pipelines automatizados:
+export ARM_CLIENT_ID="<service-principal-client-id>"
+export ARM_CLIENT_SECRET="<service-principal-secret>"
+export ARM_SUBSCRIPTION_ID="<azure-subscription-id>"
+export ARM_TENANT_ID="<azure-tenant-id>"
+```
 
-## Authors
+Los pipelines GitHub Actions de OmniCode usan los secrets:
+- `AZUREAPPSERVICE_CLIENTID`
+- `AZUREAPPSERVICE_TENANTID`
+- `AZUREAPPSERVICE_SUBSCRIPTIONID`
 
-* **Tulio Riaño Sánchez** - [GitHub](https://github.com/tulio3101)
-* **Juan Sebastián Puentes Julio** - [GitHub](https://github.com/sebaspuentes)
-* **Julián Camilo López** - [GitHub](https://github.com/julianlopez11)
-* **Alejandro Patacón Henao** - [GitHub](https://github.com/AlejandroHenao2572)
+---
 
-See also the list of [contributors](https://github.com/N3TRS/NetTerraform/contributors) on GitHub.
+## 11. 🤝 Integrantes y Contribuciones
 
-## License
+<div align="center">
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+![Course](https://img.shields.io/badge/Course-ARSW-orange?style=for-the-badge)
+![Year](https://img.shields.io/badge/Year-2026--1-blue?style=for-the-badge)
 
-Copyright (c) 2026 N3TRS
+| 👤 Integrante | 🎓 Rol |
+|:---|:---|
+| Tulio Riaño Sánchez | Desarrollo y arquitectura |
+| Julian Camilo Lopez Barrero | Desarrollo y arquitectura |
+| Juan Sebastián Puentes Julio | Desarrollo y arquitectura |
+| David Alejandro Patacon Henao | Desarrollo y arquitectura |
 
-## Acknowledgments
+> 💡 **NetTerraform** provisiona toda la infraestructura Azure de OmniCode como código versionado en git — desde el Resource Group hasta cada Web App individual — garantizando entornos reproducibles y despliegues consistentes.
 
-* Inspired by Infrastructure-as-Code best practices and the Terraform community
-* HashiCorp Terraform documentation and examples
-* Azure documentation and guides
-* The DevOps and cloud-native community for continuous learning and innovation
+**🎓 Escuela Colombiana de Ingeniería Julio Garavito**
+
+</div>
